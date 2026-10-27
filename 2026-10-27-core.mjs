@@ -1,3 +1,4 @@
+import {buildCameraPrompt} from './2026-10-27-camera.mjs';
 const aliases={
  '창문광':['window light','window daylight','window side light','side window','창문광','창가'],
  '자연광':['daylight','natural light','natural sunlight','window light','side window','자연광','햇살','햇빛'],
@@ -13,9 +14,9 @@ export function filterRecipes(rows,{query='',category='전체',tag='전체'}={})
   return terms.every(t=>(aliases[t]||[t]).some(a=>haystack.includes(a)));
  });
 }
-export function buildPrompt(recipe,{scene='',mode='text',variant='',includeExampleAction=false}={}) {
+export function buildPrompt(recipe,{scene='',mode='text',variant='',cameraSettings,includeExampleAction=false}={}) {
  if(!recipe)return '';
- const action=recipe.action??recipe.motion??'',camera=variant||recipe.camera||'';
+ const action=recipe.action??recipe.motion??'',camera=buildCameraPrompt(cameraSettings)||variant||recipe.camera||'';
  if(mode==='image')return [action,camera,recipe.focus].filter(Boolean).join('\n\n');
  const custom=scene.trim();
  return [custom||recipe.scene,recipe.prompt,(!custom||includeExampleAction)?action:'',camera,recipe.focus].filter(Boolean).join('\n\n');

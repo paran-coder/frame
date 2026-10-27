@@ -1,4 +1,4 @@
-/* v1.3.0: actions, return navigation and content-aware card alignment. */
+/* v1.4.0: actions, return navigation and content-aware card alignment. */
 :root{--action:#A64018;--action-hover:#843113;--action-pressed:#6F280F;--action-text:#FFFFFF}
 .button.primary{background:var(--action);border-color:var(--action);color:var(--action-text)}.button.primary:hover{background:var(--action-hover);border-color:var(--action-hover)}.button.primary:active{background:var(--action-pressed);border-color:var(--action-pressed)}.button.primary:focus-visible{outline:3px solid var(--link);outline-offset:4px}
 .builder-return{display:block;background:none;border:0;border-radius:12px;font-size:16px;line-height:1.5;min-height:44px;padding:8px 0;margin:0 0 12px;color:var(--text);text-align:left}.builder-return:hover{text-decoration:underline;text-underline-offset:4px}.builder-return:focus-visible{outline:3px solid var(--link);outline-offset:4px}

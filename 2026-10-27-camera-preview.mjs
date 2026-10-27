@@ -1,0 +1,22 @@
+import {cameraPose,normalizeCameraSettings} from './2026-10-27-camera.mjs';
+export function mountCameraPreview(host,initial){
+ host.innerHTML=`<div class="camera-canvas"><canvas aria-label="전경 기둥, 중앙 인물, 배경 건물을 통해 카메라 시차를 설명하는 3D 도해" role="img"></canvas></div><p class="caption">FRAME 자체 제작 3D 동작 설명 · AI 생성 영상 아님</p><div class="camera-transport"><button type="button" class="button" data-play>동작 재생</button><label>진행 <input type="range" min="0" max="1000" value="0" aria-label="카메라 동작 진행"></label><output>0%</output></div>`;
+ const canvas=host.querySelector('canvas'),ctx=canvas.getContext('2d'),slider=host.querySelector('input'),button=host.querySelector('button'),output=host.querySelector('output');
+ let settings=normalizeCameraSettings(initial),progress=0,playing=false,frame=0,last=0,disposed=false;
+ const subtract=(a,b)=>a.map((x,i)=>x-b[i]),dot=(a,b)=>a.reduce((s,x,i)=>s+x*b[i],0),cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]],unit=a=>{const l=Math.hypot(...a);return a.map(x=>x/(l||1));};
+ function draw(){if(disposed||!ctx)return;const w=Math.max(280,host.clientWidth),h=Math.round(w*.58),dpr=Math.min(devicePixelRatio||1,2);canvas.width=w*dpr;canvas.height=h*dpr;ctx.scale(dpr,dpr);ctx.fillStyle='#dce4e8';ctx.fillRect(0,0,w,h);const pose=cameraPose(settings,progress),forward=unit(subtract(pose.target,pose.position)),right=unit(cross(forward,[0,1,0])),up=cross(right,forward);
+ const project=v=>{const d=subtract(v,pose.position),z=dot(d,forward);return z>.12?[w/2+dot(d,right)*w*pose.focal/z,h*.49-dot(d,up)*w*pose.focal/z,z]:null;};
+ function line(a,b,color,width=1){a=project(a);b=project(b);if(!a||!b)return;ctx.strokeStyle=color;ctx.lineWidth=width;ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke();}
+ ctx.fillStyle='#d8d1c6';ctx.fillRect(0,h*.55,w,h*.45);for(let x=-16;x<=16;x+=2)line([x,0,-16],[x,0,16],'#b8b5ad');for(let z=-16;z<=16;z+=2)line([-16,0,z],[16,0,z],'#b8b5ad');
+ const faces=[];function box(x,y,z,bw,bh,bd,color){const v=[[x-bw/2,y,z-bd/2],[x+bw/2,y,z-bd/2],[x+bw/2,y+bh,z-bd/2],[x-bw/2,y+bh,z-bd/2],[x-bw/2,y,z+bd/2],[x+bw/2,y,z+bd/2],[x+bw/2,y+bh,z+bd/2],[x-bw/2,y+bh,z+bd/2]];for(const indices of [[0,1,2,3],[4,5,6,7],[0,4,7,3],[1,5,6,2],[3,2,6,7]]){const points=indices.map(i=>project(v[i]));if(points.every(Boolean))faces.push({points,color,z:points.reduce((s,p)=>s+p[2],0)/4});}}
+ for(const [x,z,bh] of [[-6,-7,5],[-2.5,-9,6],[3,-8,4],[7,-9,7]])box(x,0,z,2.6,bh,2,'#7e939e');
+ box(-3,0,4,.65,3.6,.65,'#c77945');box(3,0,4,.65,3.6,.65,'#c77945');
+ const [sx,,sz]=pose.subject;box(sx,.75,sz,.65,1,.4,'#a64018');box(sx,1.75,sz,.45,.5,.45,'#e8b18a');box(sx-.2,0,sz,.22,.75,.28,'#38444a');box(sx+.2,0,sz,.22,.75,.28,'#38444a');
+ faces.sort((a,b)=>b.z-a.z).forEach(({points,color})=>{ctx.fillStyle=color;ctx.strokeStyle='#ffffff45';ctx.beginPath();points.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.closePath();ctx.fill();ctx.stroke();});
+ ctx.fillStyle='#fcfbfae8';ctx.fillRect(12,12,136,100);ctx.fillStyle='#141413';ctx.font='12px sans-serif';ctx.fillText('위에서 본 이동 경로',22,30);const map=v=>[80+v[0]*3,62+v[2]*2];ctx.strokeStyle='#a64018';ctx.beginPath();for(let i=0;i<=80;i++){const a=map(cameraPose(settings,i/80).position);i?ctx.lineTo(...a):ctx.moveTo(...a);}ctx.stroke();for(const [v,color] of [[pose.subject,'#a64018'],[pose.position,'#3860be']]){const a=map(v);ctx.fillStyle=color;ctx.beginPath();ctx.arc(...a,4,0,Math.PI*2);ctx.fill();}ctx.fillStyle='#141413';ctx.fillText('주황: 인물 / 파랑: 카메라',22,101);
+ slider.value=Math.round(progress*1000);output.value=Math.round(progress*100)+'%';}
+ function stop(){playing=false;cancelAnimationFrame(frame);button.textContent='동작 재생';}
+ function tick(now){if(!playing||disposed)return;const duration={slow:9000,normal:6000,fast:3000,still:6000}[settings.speed];if(last)progress+=(now-last)/duration;last=now;if(progress>=1){progress=1;stop();}draw();if(playing)frame=requestAnimationFrame(tick);}
+ button.addEventListener('click',()=>{if(playing){stop();return;}if(progress>=1)progress=0;playing=true;last=0;button.textContent='일시 정지';frame=requestAnimationFrame(tick);});slider.addEventListener('input',()=>{stop();progress=Number(slider.value)/1000;draw();});
+ const observer=new ResizeObserver(draw);observer.observe(host);draw();return {update(value){stop();settings=normalizeCameraSettings(value);progress=0;draw();},dispose(){disposed=true;stop();observer.disconnect();}};
+}
